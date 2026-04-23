@@ -5,109 +5,116 @@
     <title>Anti-Procrastinator AIS</title>
     <style>
         body { font-family: sans-serif; background: #f4f4f9; padding: 20px; color: #333; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; text-align: center; }
-        input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #219150; }
-        #focus-task { margin-top: 20px; padding: 15px; background: #e74c3c; color: white; border-radius: 5px; text-align: center; font-weight: bold; }
-        .task-list { margin-top: 20px; }
-        .task-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+        .inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .full-width { grid-column: span 2; }
+        button { width: 100%; padding: 12px; background: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; }
+        button:hover { background: #34495e; }
+        
+        .task-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+        .task-table th, .task-table td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        .task-table th { background: #f8f9fa; color: #7f8c8d; text-transform: uppercase; font-size: 12px; }
+        .priority-badge { font-weight: bold; color: #27ae60; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Anti-Procrastinator</h1>
+    <h1>Система анализа задач</h1>
     
-    <label>Твой уровень энергии (U: 0.1 - 1.0):</label>
-    <input type="number" id="userEnergy" value="0.8" step="0.1" min="0.1" max="1">
+    <div class="inputs-grid">
+        <div class="full-width">
+            <label>Уровень личной энергии ($U$):</label>
+            <input type="number" id="userEnergy" value="0.8" step="0.1" min="0.1" max="1">
+        </div>
+        
+        <input type="text" id="taskName" placeholder="Название задачи" class="full-width">
+        <input type="text" id="taskDesc" placeholder="Описание (не влияет на расчет)" class="full-width">
+        <input type="number" id="val" placeholder="Ценность ($V$)">
+        <input type="number" id="dead" placeholder="Дедлайн ($D$, часов)">
+        <input type="number" id="comp" placeholder="Сложность ($C$)">
+        <button onclick="addTask()">Внести в базу данных</button>
+    </div>
 
-    <hr>
-
-    <h3>Добавить задачу</h3>
-    <input type="text" id="taskName" placeholder="Название задачи">
-    <input type="number" id="val" placeholder="Ценность (V: 1-10)" min="1" max="10">
-    <input type="number" id="dead" placeholder="Дедлайн (D: часов до сдачи)" min="1">
-    <input type="number" id="comp" placeholder="Сложность (C: 1-10)" min="1" max="10">
-    <button onclick="addTask()">Добавить в АИС</button>
-
-    <div id="focus-task">Расчет приоритетов...</div>
-
-    <div class="task-list" id="taskList"></div>
+    <table class="task-table">
+        <thead>
+            <tr>
+                <th>Задача</th>
+                <th>Описание</th>
+                <th>Приоритет ($P$)</th>
+            </tr>
+        </thead>
+        <tbody id="taskList"></tbody>
+    </table>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // ТВОЙ КОНФИГ ИЗ FIREBASE (Вставь свои данные сюда!)
-const firebaseConfig = {
-  apiKey: "AIzaSyAngrRq8NcW3efkFo7W9-I_NnN8NlvVEsY",
-  authDomain: "puuuuh.firebaseapp.com",
-  projectId: "puuuuh",
-  storageBucket: "puuuuh.firebasestorage.app",
-  messagingSenderId: "713704553331",
-  appId: "1:713704553331:web:3eef87200bc638069ea306",
-  measurementId: "G-8XFLJBQY21"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyAngrRq8NcW3efkFo7W9-I_NnN8NlvVEsY",
+        authDomain: "puuuuh.firebaseapp.com",
+        projectId: "puuuuh",
+        storageBucket: "puuuuh.firebasestorage.app",
+        messagingSenderId: "713704553331",
+        appId: "1:713704553331:web:3eef87200bc638069ea306",
+        measurementId: "G-8XFLJBQY21"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 1. Математическое описание задачи (Формализация) [cite: 1, 64]
+    // Добавление задачи
     window.addTask = async () => {
         const task = {
             name: document.getElementById('taskName').value,
+            desc: document.getElementById('taskDesc').value || "—",
             v: parseFloat(document.getElementById('val').value),
             d: parseFloat(document.getElementById('dead').value),
             c: parseFloat(document.getElementById('comp').value),
             timestamp: Date.now()
         };
         
-        if (task.name && task.v) {
+        if (task.name && !isNaN(task.v)) {
             await addDoc(collection(db, "tasks"), task);
-            alert("Задача добавлена в БД");
+            // Очистка полей
+            document.getElementById('taskName').value = '';
+            document.getElementById('taskDesc').value = '';
         }
     };
 
-    // 2. Реализация Математического обеспечения (Алгоритм выбора Max P) [cite: 30, 40]
+    // Слушатель базы и расчет
     onSnapshot(collection(db, "tasks"), (snapshot) => {
         const tasks = [];
         snapshot.forEach(doc => tasks.push({id: doc.id, ...doc.data()}));
         
-        const U = parseFloat(document.getElementById('userEnergy').value);
-        let maxP = -1;
-        let bestTask = null;
+        // Сортируем по времени добавления
+        tasks.sort((a, b) => b.timestamp - a.timestamp);
 
+        const U = parseFloat(document.getElementById('userEnergy').value);
         const listHtml = tasks.map(t => {
-            // ФОРМУЛА: P = (V / D) * (U / C) 
+            // ФОРМУЛА
             const P = (t.v / t.d) * (U / t.c);
             
-            if (P > maxP) {
-                maxP = P;
-                bestTask = t;
-            }
-
-            return `<div class="task-item">
-                <span>${t.name}</span>
-                <span>P: ${P.toFixed(2)}</span>
-            </div>`;
+            return `<tr>
+                <td><strong>${t.name}</strong></td>
+                <td style="color: #666">${t.desc}</td>
+                <td class="priority-badge">${P.toFixed(2)}</td>
+            </tr>`;
         }).join('');
 
         document.getElementById('taskList').innerHTML = listHtml;
+    });
 
-        // 3. Результат работы модели: Фокус-объект [cite: 43, 44]
-        const focusDiv = document.getElementById('focus-task');
-        if (bestTask) {
-            focusDiv.innerHTML = `СЕЙЧАС ДЕЛАЙ: ${bestTask.name.toUpperCase()} (Приоритет: ${maxP.toFixed(2)})`;
-            focusDiv.style.background = "#27ae60";
-        } else {
-            focusDiv.innerHTML = "Нет задач для анализа";
-            focusDiv.style.background = "#e74c3c";
-        }
+    // Авто-пересчет при смене энергии
+    document.getElementById('userEnergy').addEventListener('input', () => {
+        // Просто вызываем обновление через имитацию изменения в БД (простой хак)
+        location.reload(); 
     });
 </script>
 
 </body>
-</html>ы
+</html>
