@@ -4,38 +4,56 @@
     <meta charset="UTF-8">
     <title>Anti-Procrastinator AIS</title>
     <style>
-        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; color: #333; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
-        .inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
-        .full-width { grid-column: span 2; }
-        button { width: 100%; padding: 12px; background: #2c3e50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; }
-        button:hover { background: #34495e; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .container { max-width: 850px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h1 { color: #1a2a6c; text-align: center; margin-bottom: 30px; font-weight: 300; }
+        
+        .energy-section { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 25px; border-left: 5px solid #2c3e50; }
+        label { display: block; margin-bottom: 5px; font-size: 14px; color: #7f8c8d; }
+        
+        .inputs-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        input { padding: 12px; border: 1px solid #dee2e6; border-radius: 6px; box-sizing: border-box; transition: border 0.3s; }
+        input:focus { border-color: #1a2a6c; outline: none; }
+        .full-width { grid-column: span 3; }
+        
+        button { grid-column: span 3; padding: 14px; background: #1a2a6c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; transition: background 0.3s; }
+        button:hover { background: #2c3e50; }
         
         .task-table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-        .task-table th, .task-table td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
-        .task-table th { background: #f8f9fa; color: #7f8c8d; text-transform: uppercase; font-size: 12px; }
-        .priority-badge { font-weight: bold; color: #27ae60; }
+        .task-table th, .task-table td { text-align: left; padding: 15px; border-bottom: 1px solid #edf2f7; }
+        .task-table th { background: #fff; color: #a0aec0; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+        .priority-badge { font-weight: bold; color: #2ecc71; font-size: 1.1em; }
+        .desc-text { color: #718096; font-size: 0.9em; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Система анализа задач</h1>
+    <h1>АИС «Анти-прокрастинатор»</h1>
+    
+    <div class="energy-section">
+        <label>Твой уровень энергии ($U$): от 0.1 до 1.0</label>
+        <input type="number" id="userEnergy" value="0.8" step="0.1" min="0.1" max="1">
+    </div>
     
     <div class="inputs-grid">
-        <div class="full-width">
-            <label>Уровень личной энергии ($U$):</label>
-            <input type="number" id="userEnergy" value="0.8" step="0.1" min="0.1" max="1">
+        <input type="text" id="taskName" placeholder="Название задачи" class="full-width">
+        <input type="text" id="taskDesc" placeholder="Краткое описание" class="full-width">
+        
+        <div>
+            <label>Ценность ($V$: 1-10)</label>
+            <input type="number" id="val" value="5" min="1" max="10" style="width: 100%;">
+        </div>
+        <div>
+            <label>Дедлайн ($D$, час)</label>
+            <input type="number" id="dead" value="24" min="1" style="width: 100%;">
+        </div>
+        <div>
+            <label>Сложность ($C$: 1-10)</label>
+            <input type="number" id="comp" value="5" min="1" max="10" style="width: 100%;">
         </div>
         
-        <input type="text" id="taskName" placeholder="Название задачи" class="full-width">
-        <input type="text" id="taskDesc" placeholder="Описание (не влияет на расчет)" class="full-width">
-        <input type="number" id="val" placeholder="Ценность ($V$)">
-        <input type="number" id="dead" placeholder="Дедлайн ($D$, часов)">
-        <input type="number" id="comp" placeholder="Сложность ($C$)">
-        <button onclick="addTask()">Внести в базу данных</button>
+        <button onclick="addTask()">Добавить задачу в СУБД</button>
     </div>
 
     <table class="task-table">
@@ -52,7 +70,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAngrRq8NcW3efkFo7W9-I_NnN8NlvVEsY",
@@ -66,6 +84,7 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    let localTasks = []; // Храним задачи тут для быстрого пересчета
 
     // Добавление задачи
     window.addTask = async () => {
@@ -80,40 +99,35 @@
         
         if (task.name && !isNaN(task.v)) {
             await addDoc(collection(db, "tasks"), task);
-            // Очистка полей
             document.getElementById('taskName').value = '';
             document.getElementById('taskDesc').value = '';
         }
     };
 
-    // Слушатель базы и расчет
-    onSnapshot(collection(db, "tasks"), (snapshot) => {
-        const tasks = [];
-        snapshot.forEach(doc => tasks.push({id: doc.id, ...doc.data()}));
-        
-        // Сортируем по времени добавления
-        tasks.sort((a, b) => b.timestamp - a.timestamp);
-
+    // Функция отрисовки (вынесена отдельно для быстроты)
+    const renderTasks = () => {
         const U = parseFloat(document.getElementById('userEnergy').value);
-        const listHtml = tasks.map(t => {
-            // ФОРМУЛА
+        const listHtml = localTasks.map(t => {
             const P = (t.v / t.d) * (U / t.c);
-            
             return `<tr>
                 <td><strong>${t.name}</strong></td>
-                <td style="color: #666">${t.desc}</td>
+                <td class="desc-text">${t.desc}</td>
                 <td class="priority-badge">${P.toFixed(2)}</td>
             </tr>`;
         }).join('');
-
         document.getElementById('taskList').innerHTML = listHtml;
+    };
+
+    // Слушатель базы
+    onSnapshot(collection(db, "tasks"), (snapshot) => {
+        localTasks = [];
+        snapshot.forEach(doc => localTasks.push({id: doc.id, ...doc.data()}));
+        localTasks.sort((a, b) => b.timestamp - a.timestamp);
+        renderTasks();
     });
 
-    // Авто-пересчет при смене энергии
-    document.getElementById('userEnergy').addEventListener('input', () => {
-        // Просто вызываем обновление через имитацию изменения в БД (простой хак)
-        location.reload(); 
-    });
+    // Мгновенный пересчет при изменении энергии (без перезагрузки!)
+    document.getElementById('userEnergy').addEventListener('input', renderTasks);
 </script>
 
 </body>
