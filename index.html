@@ -42,14 +42,15 @@
     import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // ТВОЙ КОНФИГ ИЗ FIREBASE (Вставь свои данные сюда!)
-    const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_ID",
-        appId: "YOUR_APP_ID"
-    };
+    cconst firebaseConfig = {
+  apiKey: "AIzaSyAngrRq8NcW3efkFo7W9-I_NnN8NlvVEsY",
+  authDomain: "puuuuh.firebaseapp.com",
+  projectId: "puuuuh",
+  storageBucket: "puuuuh.firebasestorage.app",
+  messagingSenderId: "713704553331",
+  appId: "1:713704553331:web:3eef87200bc638069ea306",
+  measurementId: "G-8XFLJBQY21"
+};
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
