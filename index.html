@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Anti-Procrastinator AIS</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f4f9; padding: 20px; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        input, select { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #219150; }
+        #focus-task { margin-top: 20px; padding: 15px; background: #e74c3c; color: white; border-radius: 5px; text-align: center; font-weight: bold; }
+        .task-list { margin-top: 20px; }
+        .task-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Anti-Procrastinator</h1>
+    
+    <label>Твой уровень энергии (U: 0.1 - 1.0):</label>
+    <input type="number" id="userEnergy" value="0.8" step="0.1" min="0.1" max="1">
+
+    <hr>
+
+    <h3>Добавить задачу</h3>
+    <input type="text" id="taskName" placeholder="Название задачи">
+    <input type="number" id="val" placeholder="Ценность (V: 1-10)" min="1" max="10">
+    <input type="number" id="dead" placeholder="Дедлайн (D: часов до сдачи)" min="1">
+    <input type="number" id="comp" placeholder="Сложность (C: 1-10)" min="1" max="10">
+    <button onclick="addTask()">Добавить в АИС</button>
+
+    <div id="focus-task">Расчет приоритетов...</div>
+
+    <div class="task-list" id="taskList"></div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // ТВОЙ КОНФИГ ИЗ FIREBASE (Вставь свои данные сюда!)
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 1. Математическое описание задачи (Формализация) [cite: 1, 64]
+    window.addTask = async () => {
+        const task = {
+            name: document.getElementById('taskName').value,
+            v: parseFloat(document.getElementById('val').value),
+            d: parseFloat(document.getElementById('dead').value),
+            c: parseFloat(document.getElementById('comp').value),
+            timestamp: Date.now()
+        };
+        
+        if (task.name && task.v) {
+            await addDoc(collection(db, "tasks"), task);
+            alert("Задача добавлена в БД");
+        }
+    };
+
+    // 2. Реализация Математического обеспечения (Алгоритм выбора Max P) [cite: 30, 40]
+    onSnapshot(collection(db, "tasks"), (snapshot) => {
+        const tasks = [];
+        snapshot.forEach(doc => tasks.push({id: doc.id, ...doc.data()}));
+        
+        const U = parseFloat(document.getElementById('userEnergy').value);
+        let maxP = -1;
+        let bestTask = null;
+
+        const listHtml = tasks.map(t => {
+            // ФОРМУЛА: P = (V / D) * (U / C) 
+            const P = (t.v / t.d) * (U / t.c);
+            
+            if (P > maxP) {
+                maxP = P;
+                bestTask = t;
+            }
+
+            return `<div class="task-item">
+                <span>${t.name}</span>
+                <span>P: ${P.toFixed(2)}</span>
+            </div>`;
+        }).join('');
+
+        document.getElementById('taskList').innerHTML = listHtml;
+
+        // 3. Результат работы модели: Фокус-объект [cite: 43, 44]
+        const focusDiv = document.getElementById('focus-task');
+        if (bestTask) {
+            focusDiv.innerHTML = `СЕЙЧАС ДЕЛАЙ: ${bestTask.name.toUpperCase()} (Приоритет: ${maxP.toFixed(2)})`;
+            focusDiv.style.background = "#27ae60";
+        } else {
+            focusDiv.innerHTML = "Нет задач для анализа";
+            focusDiv.style.background = "#e74c3c";
+        }
+    });
+</script>
+
+</body>
+</html>ы
